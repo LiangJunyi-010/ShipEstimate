@@ -1,7 +1,8 @@
 import pandas as pd
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.compose import ColumnTransformer
 from keras import layers, models
 
 # Load Data
@@ -15,27 +16,27 @@ df['Contract Arrival Time'] = pd.to_datetime(df['Contract Arrival Time'])
 # Create new feature: difference in days between 'Start Date' and 'Contract Arrival Time'
 df['Date Difference'] = (df['Contract Arrival Time'] - df['Start Date']).dt.total_seconds() / (24 * 60 * 60)
 
+# Define preprocessor
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', StandardScaler(), df.select_dtypes(include=['float64']).columns),
+        ('cat', OneHotEncoder(drop='first'), ['Ship Routine', 'Ship type'])
+    ])
+
 # Drop the datetime columns after creating the 'Date Difference' feature
 X = df.drop(columns=['Start Date', 'Contract Arrival Time', 'Delay'])
-
-# Continue with the existing preprocessing steps
-scaler = StandardScaler()
-X = scaler.fit_transform(X)
+X = preprocessor.fit_transform(X)
 y = df['Delay']
 
-# Scale the Features
-scaler = StandardScaler()
-X = scaler.fit_transform(X)
-
 # Convert Labels to one-hot encoding
-y = tf.keras.utils.to_categorical(y)  # Since delay can be negative, adding 2 to make all classes positive.
+y = tf.keras.utils.to_categorical(y)
 
 # Train-Test Split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 model = models.Sequential([
     layers.Dense(32, activation='relu', input_shape=(X_train.shape[1],)),
-    layers.Dense(5, activation='softmax')  # 5 classes representing delays from -2 to 2
+    layers.Dense(5, activation='softmax')
 ])
 
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
@@ -43,10 +44,10 @@ model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accur
 # Train the Model
 model.fit(X_train, y_train, epochs=10, batch_size=32, validation_split=0.1)
 
-# This is an example new_data, in practice, you will replace it with actual new data
+# Example new_data, you will replace it with actual new data
 new_data = pd.DataFrame({
     'Start Date': [pd.Timestamp('2023-10-01')],
-    'Weather Conditions': [0.5],  # example values for the features
+    'Weather Conditions': [0.5],
     'Port Congestion': [0.6],
     'Navigational Issues': [0.7],
     'Mechanical Breakdowns': [0.2],
@@ -62,15 +63,13 @@ new_data = pd.DataFrame({
     'Global Events': [0.6],
     'Seasonal Factors': [0.3],
     'Contract Arrival Time': [pd.Timestamp('2023-10-05')],
+    'Ship Routine': ['b'],  # Add corresponding value
+    'Ship type': ['y']  # Add corresponding value
 })
-
 
 new_data['Date Difference'] = (new_data['Contract Arrival Time'] - new_data['Start Date']).dt.total_seconds() / (24 * 60 * 60)
 new_data.drop(columns=['Start Date', 'Contract Arrival Time'], inplace=True)
-
-# Remove the feature names from the new_data before transforming to avoid the warning.
-new_data_scaled = scaler.transform(new_data.values)
+new_data_scaled = preprocessor.transform(new_data)
 predictions = model.predict(new_data_scaled)
 predictions_dict = {str(i): f"{predictions[0][i] * 100:.2f}%" for i in range(5)}
 print(predictions_dict)
-

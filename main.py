@@ -23,8 +23,13 @@ def data_generate():
         'Global Events',
         'Seasonal Factors',
         'Contract Arrival Time',
+        'Ship Routine',  # New column
+        'Ship type',  # New column
         'Delay'
     ])
+
+    ship_routines = ['a', 'b', 'c']
+    ship_types = ['x', 'y', 'z']
 
     for _ in range(num_data_points):
         year = 2023
@@ -37,6 +42,9 @@ def data_generate():
 
         delay = random.randint(0, 4)  # Delay in days. It can be negative, zero, or positive.
         actual_arrival_time = contract_arrival_time + timedelta(days=delay)
+
+        ship_routine = random.choice(ship_routines)  # Randomly select ship routine
+        ship_type = random.choice(ship_types)  # Randomly select ship type
 
         row = {
             'Start Date': start_date.strftime('%Y-%m-%d'),
@@ -56,6 +64,8 @@ def data_generate():
             'Global Events': random.uniform(0, 1),
             'Seasonal Factors': random.uniform(0, 1),
             'Contract Arrival Time': contract_arrival_time.strftime('%Y-%m-%d'),
+            'Ship Routine': ship_routine,  # Add ship routine to row
+            'Ship type': ship_type,  # Add ship type to row
             'Delay': delay
         }
 
